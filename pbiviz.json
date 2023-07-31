@@ -1,0 +1,27 @@
+{
+    "visual":
+    {
+        "name":"pdfViewer",
+        "displayName":"Pdf Viewer",
+        "guid":"pdfViewer392A657C115F4015AD64793E71199A8B",
+        "visualClassName":"Visual",
+        "version":"1.2.2",
+        "description":"This Visual utilizes PDF JS to display PDF documents from base64 encoded data",
+        "supportUrl":"https://datadrivenideas.wordpress.com/",
+        "gitHubUrl":"https://github.com/DanielSallander/PowerBI-visuals"
+    },
+    "apiVersion":"5.1.0",
+    "author": 
+        {
+            "name":"Daniel Sallander",
+            "email":"daniel@dsanalytics.se"
+        },
+    "assets":
+        {
+            "icon":"assets/icon.png"
+        },
+    "style":"style/visual.less",
+    "capabilities":"capabilities.json",
+    "dependencies":null,
+    "stringResources":[]
+}
