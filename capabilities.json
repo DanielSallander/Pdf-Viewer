@@ -1,0 +1,84 @@
+{
+    "privileges": [
+        {
+            "name": "ExportContent",
+            "essential": true
+        }
+    ],
+    "dataRoles": [
+        {
+            "displayName": "PDF Base64 Data",
+            "name": "pdfData",
+            "kind": "GroupingOrMeasure"          
+        },
+        {
+            "displayName": "PDF File Name",
+            "name": "pdfFileName",
+            "kind": "GroupingOrMeasure"          
+        }
+    ],
+    "objects": {
+            "dataCard": {
+                "properties": {
+                    "showHeader": {
+                            "type": {
+                                "bool": true
+                            }
+                    },
+                    "scrollOverflow": {
+                        "type": {
+                            "bool": true
+                        }
+                }
+            }
+        
+        }
+        
+    }
+    ,
+    "dataViewMappings": [
+        {
+            
+            "conditions": [
+                {
+                    "pdfData": 
+                    {
+                        "max": 1
+                    },
+                    "pdfFileName": 
+                    {
+                        "max": 1
+                    }
+                }
+            ],           
+            "table": 
+            {
+                "rows": 
+                {
+                    "select": [ 
+                    {
+                        "for": 
+                        {
+                            "in": "pdfData"
+                        }
+                    },
+                    {
+                        "for": 
+                        {
+                            "in": "pdfFileName"
+                        }
+                    }]
+                },
+                "dataReductionAlgorithm": 
+                {
+                    "top": 
+                    {
+                        "count": 2
+                    }
+                }
+            }
+        }
+    ]
+}
+
+           
