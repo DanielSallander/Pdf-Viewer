@@ -2,8 +2,12 @@
  * Interface for PDF View settings.
  *
  * @interface
- * @property {{showHeader:boolean,scrollOverflow:boolean}} pdfViewerSettings
+ * @property {{
+*   showHeader: boolean,
+*   scrollOverflow: boolean
+* }} pdfViewerSettings
 */
+
 export interface PDFViewSettings {
     pdfViewerSettings: {
       showHeader: boolean;

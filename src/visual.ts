@@ -83,8 +83,6 @@ export class Visual implements IVisual {
     public rightArrowSign: HTMLSpanElement;
     public leftArrowSign: HTMLSpanElement;
     public pageIndicatorSpan: HTMLSpanElement;
-    public vertical_sep1: HTMLDivElement; 
-    public vertical_sep2: HTMLDivElement; 
     public zoomIndicatorSpan: HTMLSpanElement;
     public zoom_reset_and_indicator: HTMLDivElement;
     public exportToFileButtoncallout: HTMLDivElement;
@@ -112,74 +110,81 @@ export class Visual implements IVisual {
     public static readonly A4_PROPORTION = 1.414; // Fixed number for A4 proportion
        
     constructor(options: VisualConstructorOptions) {
-
       this.licenseManager = options.host.licenseManager;
-
-      this.licenseManager.getAvailableServicePlans().then((result: LicenseInfoResult) => {
-        this.notificationType = result.isLicenseUnsupportedEnv ?  powerbi.LicenseNotificationType.UnsupportedEnv : powerbi.LicenseNotificationType.General;
-        this.hasServicePlans = !!(result.plans && result.plans.length && result.plans[0].spIdentifier == "test_isvconnect1599092224747.powerbivisualtransact.plan1" && 
-          ( result.plans[0].state == powerbi.ServicePlanState.Active ||  result.plans[0].state == powerbi.ServicePlanState.Warning));
+    
+      this.licenseManager.getAvailableServicePlans()
+        .then((result: LicenseInfoResult) => {
+          this.notificationType = result.isLicenseUnsupportedEnv
+            ? powerbi.LicenseNotificationType.UnsupportedEnv
+            : powerbi.LicenseNotificationType.General;
           
-          // display notification if the user doesn't have licenses
+          this.hasServicePlans = !!(
+            result.plans &&
+            result.plans.length &&
+            result.plans[0].spIdentifier === "test_isvconnect1599092224747.powerbivisualtransact.plan1" &&
+            (result.plans[0].state === powerbi.ServicePlanState.Active || result.plans[0].state === powerbi.ServicePlanState.Warning)
+          );
+    
+          // Display notification if the user doesn't have licenses
           if (!this.hasServicePlans) {
-                this.licenseManager.notifyLicenseRequired(this.notificationType).then((value) => {
-                  if (value) {
-                      //this.isIconDisplayed = true;
-                      this.isLicensed = false;
-                  }
-                }).catch((err) => {
-                  console.log('ERROR', err);
-                })
-            }
-          }).catch((err) => {
-            this.hasServicePlans = undefined;
-            console.log(err);
-          });
-
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
-        this.target = options.element;
-        this.host = options.host;
-        this.self = this;
-
-        this.scrollOverflow = false;
-        this.headerIsPresentable = false;
-
-        this.events = options.host.eventService;
-           
-        createWarningTextNode(this.self);
-        createHeaderContainer(this.self);
-        createPdfContainer(this.self);
-
-        options.host.refreshHostData();
-           
+            this.licenseManager.notifyLicenseRequired(this.notificationType)
+              .then((value) => {
+                if (value) {
+                  // this.isIconDisplayed = true;
+                  this.isLicensed = false;
+                }
+              })
+              .catch((err) => {
+                console.log('ERROR', err);
+              });
+          }
+        })
+        .catch((err) => {
+          this.hasServicePlans = undefined;
+          console.log(err);
+        });
+    
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+    
+      this.target = options.element;
+      this.host = options.host;
+      this.self = this;
+    
+      this.scrollOverflow = false;
+      this.headerIsPresentable = false;
+    
+      this.events = options.host.eventService;
+    
+      createWarningTextNode(this.self);
+      createHeaderContainer(this.self);
+      createPdfContainer(this.self);
+    
+      options.host.refreshHostData();
     }
-
+    
     public update(options: VisualUpdateOptions) {
-      
       this.events.renderingStarted(options);
-
+    
       const { dataViews } = options;
       const { objects } = dataViews[0].metadata;
       const { rows, columns } = dataViews[0].table;
-
+    
       this.options = options;
-
+    
       this.visualViewportWidth = options.viewport.width;
       this.visualViewportHeight = options.viewport.height;
-
+    
       const pdfViewSettings: PDFViewSettings = {
         pdfViewerSettings: {
           showHeader: getValue<boolean>(objects, 'dataCard', 'showHeader', defaultSettings.pdfViewerSettings.showHeader),
           scrollOverflow: getValue<boolean>(objects, 'dataCard', 'scrollOverflow', defaultSettings.pdfViewerSettings.scrollOverflow),
         }
       };
-
+    
       this.pdfViewSettings = pdfViewSettings;
-
+    
       try {
-
-          /* Only one document must be selected */
+        /* Only one document must be selected */
         if (rows.length !== 1) {
           this.handleError("The visual must be filtered to one document in order to be displayed");
           throw new Error();
@@ -188,35 +193,34 @@ export class Visual implements IVisual {
         const Base64Conversion = new base64conversion();
         const pdfDataIndex = Object.keys(columns[0].roles)[0] === "pdfData" ? 0 : 1;
         const pdfFileNameIndex = pdfDataIndex === 1 ? 0 : 1;
-        
         const newBase64String = rows[0][pdfDataIndex]?.toString();
-
+    
         if (!newBase64String || !Base64Conversion.isBase64(newBase64String)) {
           this.handleError(
             (!newBase64String ? "No pdf document is selected or pdf base 64 data is empty" :
             "The selected pdf document is not properly formatted to base64"));
           throw new Error();
         }
-
+    
         const pdfDataIsMeasure = dataViews[0].metadata.columns[pdfDataIndex].isMeasure;
         const pdfFileNameIsMeasure = dataViews[0].metadata.columns[pdfFileNameIndex].isMeasure;
-
-        if(!this.isLicensed) {
-          if(pdfDataIsMeasure || pdfFileNameIsMeasure) {
-            this.handleError("Using measures is only available in the licensed version")
+    
+        if (!this.isLicensed) {
+          if (pdfDataIsMeasure || pdfFileNameIsMeasure) {
+            this.handleError("Using measures is only available in the licensed version");
             throw new Error("PDF rendering aborted");
           }
         }
-
+    
         this.pdfFileName = rows[0][pdfFileNameIndex]?.toString() || "Data";
-
+    
         this.warningText.textContent = '';
-        if(this.base64encodedString !== newBase64String) this.pageNumber = 1;
-        
+        if (this.base64encodedString !== newBase64String) this.pageNumber = 1;
+    
         this.base64encodedString = newBase64String;
         const pdfAsArray = Base64Conversion.convertDataURIToBinary(this.base64encodedString);
     
-        this.loadingTask = pdfjsLib.getDocument({data: pdfAsArray});
+        this.loadingTask = pdfjsLib.getDocument({ data: pdfAsArray });
         this.processLoadingTask();
       }
       catch (error) {
@@ -225,110 +229,116 @@ export class Visual implements IVisual {
       finally {
         this.events.renderingFinished(this.options);
       }
-
+    
       return;
-  }
-
-  private handleError(errorMessage: string) {
-    this.base64encodedString = "(dummy)";
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
     
-    this.headerIsPresentable = false;
-    this.scrollOverflow = false;
-    toggleHeaderVisibility(this.self);
-    toggleScrollOverflow(this.self);
-
-    this.warningText.textContent = errorMessage 
-  }
-
-  private processLoadingTask() {
-    this.loadingTask.promise.then((pdf) => {   
-        this.numberOfPages = pdf.numPages;             
-        pdf.getPage(this.pageNumber).then((page) => {
-            this.adjustSizeAndToggle();
-            this.processPage(page);
-        }).catch((error) => {
-            console.error('Error occurred during page processing:', error);
-        });    
-    }).catch((reason) => {
-        console.error('Error occurred during loading task:', reason);
-    });
-  }
-
-  private processPage(page: PDFPageProxy) {
-    const scale: number = 3;
-   
-    this.viewport = page.getViewport({scale: scale});
+    private handleError(errorMessage: string) {
+      this.base64encodedString = "(dummy)";
+      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
-    this.pdfViewportHeight = this.viewport.height
-    this.pdfViewportWidth = this.viewport.width
-
-    const visualViewportWidthSubtract = this.pdfViewSettings.pdfViewerSettings.showHeader ? this.calculatedHeaderHeight: 0
-
-    this.pdfContainer.style.width = `${this.visualViewportWidth}px`;
-    this.pdfContainer.style.height =
-        `${this.visualViewportHeight - visualViewportWidthSubtract}px`;
+      this.headerIsPresentable = false;
+      this.scrollOverflow = false;
+      toggleHeaderVisibility(this.self);
+      toggleScrollOverflow(this.self);
     
-    this.canvas.height = this.pdfViewportHeight;
-    this.canvas.width = this.pdfViewportWidth;
-    this.canvas.style.width = `${this.visualViewportWidth * this.zoomLevel - Visual.SCROLLBAR_WIDTH}px`; // - scrollbarWidth
-    this.canvas.style.height = `${this.visualViewportWidth * Visual.A4_PROPORTION * this.zoomLevel}px`;
+      this.warningText.textContent = errorMessage;
+    }
+    
 
-    const renderContext = {
+    private processLoadingTask() {
+      this.loadingTask.promise
+        .then((pdf) => {
+          this.numberOfPages = pdf.numPages;
+          pdf.getPage(this.pageNumber)
+            .then((page) => {
+              this.adjustSizeAndToggle();
+              this.processPage(page);
+            })
+            .catch((error) => {
+              console.error('Error occurred during page processing:', error);
+            });
+        })
+        .catch((reason) => {
+          console.error('Error occurred during loading task:', reason);
+        });
+    }
+    
+
+    private processPage(page: PDFPageProxy) {
+      const scale: number = 3;
+      this.viewport = page.getViewport({ scale: scale });
+      this.pdfViewportHeight = this.viewport.height;
+      this.pdfViewportWidth = this.viewport.width;
+    
+      const visualViewportWidthSubtract = this.pdfViewSettings.pdfViewerSettings.showHeader ? this.calculatedHeaderHeight : 0;
+    
+      this.pdfContainer.style.width = `${this.visualViewportWidth}px`;
+      this.pdfContainer.style.height = `${this.visualViewportHeight - visualViewportWidthSubtract}px`;
+    
+      this.canvas.height = this.pdfViewportHeight;
+      this.canvas.width = this.pdfViewportWidth;
+      this.canvas.style.width = `${this.visualViewportWidth * this.zoomLevel - Visual.SCROLLBAR_WIDTH}px`; // - scrollbarWidth
+      this.canvas.style.height = `${this.visualViewportWidth * Visual.A4_PROPORTION * this.zoomLevel}px`;
+    
+      const renderContext = {
         canvasContext: this.context,
         viewport: this.viewport
-    };
-
-    /* cancel render in case new pdf is loaded before previous render is finished */
-    if(this.renderTask !== undefined) { 
-      this.renderTask.cancel();
+      };
+    
+      /* cancel render in case new pdf is loaded before previous render is finished */
+      if (this.renderTask !== undefined) {
+        this.renderTask.cancel();
+      }
+    
+      this.renderTask = page.render(renderContext);
+    
+      this.processRenderTask();
     }
     
-    this.renderTask = page.render(renderContext);
+
+    private processRenderTask() {
+      this.renderTask.promise
+        .then(() => {
+          evaluateArrowImages(this.self);
     
-    this.processRenderTask();
-  }
-
-  private processRenderTask() {
-    this.renderTask.promise.then(() => {
-        evaluateArrowImages(this.self);
-        
-        this.headerIsPresentable = true;
-        this.scrollOverflow = this.pdfViewSettings.pdfViewerSettings.scrollOverflow;
-        
-        this.pageIndicatorSpan.textContent = `${this.pageNumber} of ${this.numberOfPages}`;
-        this.zoomIndicatorSpan.textContent = `${this.zoomLevel * 100}%`;
-
-        this.adjustSizeAndToggle();   
-                 
-    }).catch((renderError) => {
-        console.error('Error occurred during rendering:', renderError);
-    });
-  }
-
-  private adjustSizeAndToggle() {
-    let bottommostPoint = 0;
-    let topmostPoint = 0;
-
-    this.headerContainer.hidden = false
- 
-    const headerChildren = Array.from(this.headerContainer.children);
-    for (const child of headerChildren) {
-      const childStyles = getComputedStyle(child);
-      const childRect = child.getBoundingClientRect();
-      const topPoint = childRect.top + parseInt(childStyles.marginTop);
-      const bottomPoint = childRect.bottom + parseInt(childStyles.marginBottom);
-      bottommostPoint = Math.max(bottomPoint, bottommostPoint);
-      topmostPoint = Math.min(topPoint, topmostPoint);
+          this.headerIsPresentable = true;
+          this.scrollOverflow = this.pdfViewSettings.pdfViewerSettings.scrollOverflow;
+    
+          this.pageIndicatorSpan.textContent = `${this.pageNumber} of ${this.numberOfPages}`;
+          this.zoomIndicatorSpan.textContent = `${this.zoomLevel * 100}%`;
+    
+          this.adjustSizeAndToggle();
+        })
+        .catch((renderError) => {
+          console.error('Error occurred during rendering:', renderError);
+        });
     }
+    
 
-    this.calculatedHeaderHeight = bottommostPoint - topmostPoint;
-    this.headerContainer.style.height = `${this.calculatedHeaderHeight}px`;
-
-    toggleHeaderVisibility(this.self);
-    toggleScrollOverflow(this.self);
-
-  }
+    private adjustSizeAndToggle() {
+      let bottommostPoint = 0;
+      let topmostPoint = 0;
+    
+      this.headerContainer.hidden = false;
+    
+      const headerChildren = Array.from(this.headerContainer.children);
+      for (const child of headerChildren) {
+        const childStyles = getComputedStyle(child);
+        const childRect = child.getBoundingClientRect();
+        const topPoint = childRect.top + parseInt(childStyles.marginTop);
+        const bottomPoint = childRect.bottom + parseInt(childStyles.marginBottom);
+        bottommostPoint = Math.max(bottomPoint, bottommostPoint);
+        topmostPoint = Math.min(topPoint, topmostPoint);
+      }
+    
+      this.calculatedHeaderHeight = bottommostPoint - topmostPoint;
+      this.headerContainer.style.height = `${this.calculatedHeaderHeight}px`;
+    
+      toggleHeaderVisibility(this.self);
+      toggleScrollOverflow(this.self);
+    }
+    
 
     /**
      * Returns properties pane formatting model content hierarchies, properties and latest formatting values, Then populate properties pane.
@@ -340,5 +350,4 @@ export class Visual implements IVisual {
       return formatConfiguration.getFormatConfiguration(this.pdfViewSettings);     
     }
     
-
 }
