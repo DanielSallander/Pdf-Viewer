@@ -61,6 +61,7 @@ const defaultSettings: PDFViewSettings = {
 };
 
 export class Visual implements IVisual {
+    
     public self: Visual;
     public viewport: PageViewport ;
     public target: HTMLElement;
@@ -102,7 +103,7 @@ export class Visual implements IVisual {
     public licenseManager: IVisualLicenseManager;
     public notificationType: number;
     public hasServicePlans: boolean;
-    public isLicensed: boolean = false;
+    public isLicensed: boolean;
 
     private events: IVisualEventService;
 
@@ -111,6 +112,8 @@ export class Visual implements IVisual {
        
     constructor(options: VisualConstructorOptions) {
       this.licenseManager = options.host.licenseManager;
+
+      const planName = "pdfviewer_plan";
     
       this.licenseManager.getAvailableServicePlans()
         .then((result: LicenseInfoResult) => {
@@ -121,22 +124,14 @@ export class Visual implements IVisual {
           this.hasServicePlans = !!(
             result.plans &&
             result.plans.length &&
-            result.plans[0].spIdentifier === "test_isvconnect1599092224747.powerbivisualtransact.plan1" &&
+            keywordExistsInString(planName, result.plans[0].spIdentifier) &&
             (result.plans[0].state === powerbi.ServicePlanState.Active || result.plans[0].state === powerbi.ServicePlanState.Warning)
           );
     
-          // Display notification if the user doesn't have licenses
           if (!this.hasServicePlans) {
-            this.licenseManager.notifyLicenseRequired(this.notificationType)
-              .then((value) => {
-                if (value) {
-                  // this.isIconDisplayed = true;
-                  this.isLicensed = false;
-                }
-              })
-              .catch((err) => {
-                console.log('ERROR', err);
-              });
+            this.isLicensed = false;
+          } else { 
+            this.isLicensed = true;
           }
         })
         .catch((err) => {
@@ -207,7 +202,12 @@ export class Visual implements IVisual {
     
         if (!this.isLicensed) {
           if (pdfDataIsMeasure || pdfFileNameIsMeasure) {
-            this.handleError("Using measures is only available in the licensed version");
+            const licenseTooltip = "Using measures is only available in the licensed version"
+            this.handleError(licenseTooltip);
+            this.licenseManager.notifyFeatureBlocked(licenseTooltip);
+            setTimeout(() => {
+              this.licenseManager.clearLicenseNotification();
+            }, 5000);
             throw new Error("PDF rendering aborted");
           }
         }
@@ -245,7 +245,6 @@ export class Visual implements IVisual {
       this.warningText.textContent = errorMessage;
     }
     
-
     private processLoadingTask() {
       this.loadingTask.promise
         .then((pdf) => {
@@ -350,4 +349,8 @@ export class Visual implements IVisual {
       return formatConfiguration.getFormatConfiguration(this.pdfViewSettings);     
     }
     
+}
+
+function keywordExistsInString(keyword: string, str: string): boolean {
+  return str.includes(keyword);
 }

@@ -43,9 +43,6 @@ import { Visual } from './visual';
   
     self.exportToFileButton = document.createElement('button');
     self.exportToFileButton.textContent = 'Export document';
-    self.exportToFileButtoncallout = document.createElement('div');
-    self.exportToFileButtoncallout.textContent =
-      'Exporting documents is only available in the licensed version';
   
     /* Append to header */
     appendElementsToHeaderContainer(self, [
@@ -115,11 +112,11 @@ import { Visual } from './visual';
           });
       } else {
         /* Show popup message in case visual is not licensed */
-        self.headerContainer.appendChild(self.exportToFileButtoncallout);
-  
+        self.licenseManager.notifyFeatureBlocked('Exporting documents is only available in the licensed version');
         setTimeout(() => {
-          self.headerContainer.removeChild(self.exportToFileButtoncallout);
+          self.licenseManager.clearLicenseNotification();
         }, 3000);
+        
       }
     };
   
@@ -144,7 +141,6 @@ import { Visual } from './visual';
     self.rightArrow.classList.add('arrow-button');
     self.leftArrow.classList.add('arrow-button');
     self.zoom_reset_and_indicator.classList.add('zoom-reset-and-indicator');
-    self.exportToFileButtoncallout.classList.add('callout');
     self.headerContainer.id = 'header-container';
     self.zoomPlus.id = 'zoom-plus';
     self.zoomMinus.id = 'zoom-minus';
