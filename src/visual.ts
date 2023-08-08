@@ -198,8 +198,8 @@ export class Visual implements IVisual {
         }
     
         const pdfDataIsMeasure = dataViews[0].metadata.columns[pdfDataIndex].isMeasure;
-        const pdfFileNameIsMeasure = dataViews[0].metadata.columns[pdfFileNameIndex].isMeasure;
-    
+        const pdfFileNameIsMeasure = dataViews[0]?.metadata?.columns[pdfFileNameIndex]?.isMeasure ?? false;
+ 
         if (!this.isLicensed) {
           if (pdfDataIsMeasure || pdfFileNameIsMeasure) {
             const licenseTooltip = "Using measures is only available in the licensed version"
