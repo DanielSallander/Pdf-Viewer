@@ -5,10 +5,10 @@
         "displayName":"Pdf Viewer",
         "guid":"pdfViewer392A657C115F4015AD64793E71199A8B",
         "visualClassName":"Visual",
-        "version":"1.2.2",
+        "version":"1.2.2.1",
         "description":"This Visual utilizes PDF JS to display PDF documents from base64 encoded data",
         "supportUrl":"https://datadrivenideas.wordpress.com/",
-        "gitHubUrl":"https://github.com/DanielSallander/PowerBI-visuals"
+        "gitHubUrl":"https://github.com/DanielSallander/Pdf-Viewer"
     },
     "apiVersion":"5.1.0",
     "author": 
