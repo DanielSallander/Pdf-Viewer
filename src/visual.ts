@@ -27,6 +27,7 @@
 
 import 'regenerator-runtime/runtime';
 
+type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 import { base64conversion } from './base64conversion';
 import { PDFViewSettings, FormatConfiguration } from './formattingmodel';
 import { getValue } from "./objectEnumerationUtility";
@@ -36,7 +37,7 @@ import {
   createPdfContainer,
   toggleScrollOverflow,
   toggleHeaderVisibility,
-  evaluateArrowImages,
+  evaluateArrowButtons,
 } from './layout';
 import "./../style/visual.less";
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
@@ -52,6 +53,10 @@ import IVisualHost =  powerbi.extensibility.visual.IVisualHost;
 import IVisualEventService = powerbi.extensibility.IVisualEventService;
 import IVisualLicenseManager = powerbi.extensibility.IVisualLicenseManager;
 import LicenseInfoResult =  powerbi.extensibility.visual.LicenseInfoResult;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import {
+  select as d3Select
+} from "d3-selection";
 
 const defaultSettings: PDFViewSettings = {
   pdfViewerSettings: {
@@ -62,6 +67,7 @@ const defaultSettings: PDFViewSettings = {
 
 export class Visual implements IVisual {
     
+    private selectionElement: Selection<any>;
     public self: Visual;
     public viewport: PageViewport ;
     public target: HTMLElement;
@@ -106,6 +112,7 @@ export class Visual implements IVisual {
     public isLicensed: boolean;
 
     private events: IVisualEventService;
+    private selectionManager: ISelectionManager;
 
     public static readonly SCROLLBAR_WIDTH = 18; // Fixed number for scroll bar width
     public static readonly A4_PROPORTION = 1.414; // Fixed number for A4 proportion
@@ -138,6 +145,10 @@ export class Visual implements IVisual {
           this.hasServicePlans = undefined;
           console.log(err);
         });
+
+      
+
+      this.selectionManager = options.host.createSelectionManager();
     
       pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
     
@@ -153,6 +164,10 @@ export class Visual implements IVisual {
       createWarningTextNode(this.self);
       createHeaderContainer(this.self);
       createPdfContainer(this.self);
+
+      this.selectionElement = d3Select(this.canvas);
+
+      this.handleContextMenu();
     
       options.host.refreshHostData();
     }
@@ -299,7 +314,7 @@ export class Visual implements IVisual {
     private processRenderTask() {
       this.renderTask.promise
         .then(() => {
-          evaluateArrowImages(this.self);
+          evaluateArrowButtons(this.self);
     
           this.headerIsPresentable = true;
           this.scrollOverflow = this.pdfViewSettings.pdfViewerSettings.scrollOverflow;
@@ -336,6 +351,16 @@ export class Visual implements IVisual {
     
       toggleHeaderVisibility(this.self);
       toggleScrollOverflow(this.self);
+    }
+
+    private handleContextMenu() {    
+      this.selectionElement.on('contextmenu', (event: PointerEvent, dataPoint) => {
+        this.selectionManager.showContextMenu(dataPoint ? dataPoint: {}, {
+            x: event.clientX,
+            y: event.clientY
+        });
+        event.preventDefault();
+      });
     }
     
 
