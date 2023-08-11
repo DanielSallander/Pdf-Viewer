@@ -33,7 +33,7 @@ import { PDFViewSettings, FormatConfiguration } from './formattingmodel';
 import { getValue } from "./objectEnumerationUtility";
 import { 
   createWarningTextNode,
-  createHeaderContainer,
+  createHeader,
   createPdfContainer,
   toggleScrollOverflow,
   toggleHeaderVisibility,
@@ -46,6 +46,7 @@ import { PDFDocumentLoadingTask, RenderTask } from 'pdfjs-dist/types/src/display
 import { PDFPageProxy } from 'pdfjs-dist';
 import { PageViewport } from 'pdfjs-dist/types/web/interfaces';
 import powerbi from "powerbi-visuals-api";
+import {createTooltipServiceWrapper, ITooltipServiceWrapper} from "powerbi-visuals-utils-tooltiputils";
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
@@ -68,6 +69,7 @@ const defaultSettings: PDFViewSettings = {
 export class Visual implements IVisual {
     
     private selectionElement: Selection<any>;
+    private tooltipServiceWrapper: ITooltipServiceWrapper;
     public self: Visual;
     public viewport: PageViewport ;
     public target: HTMLElement;
@@ -146,8 +148,6 @@ export class Visual implements IVisual {
           console.log(err);
         });
 
-      
-
       this.selectionManager = options.host.createSelectionManager();
     
       pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -162,10 +162,12 @@ export class Visual implements IVisual {
       this.events = options.host.eventService;
     
       createWarningTextNode(this.self);
-      createHeaderContainer(this.self);
+      createHeader(this.self);
       createPdfContainer(this.self);
 
       this.selectionElement = d3Select(this.canvas);
+
+      this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService, options.element);
 
       this.handleContextMenu();
     
@@ -237,6 +239,13 @@ export class Visual implements IVisual {
     
         this.loadingTask = pdfjsLib.getDocument({ data: pdfAsArray });
         this.processLoadingTask();
+        /*
+        this.tooltipServiceWrapper.addTooltip(this.selectionElement ,
+          (datapoint: BarChartDataPoint) => this.getTooltipData(datapoint),
+          (datapoint: BarChartDataPoint) => datapoint.selectionId
+        );
+        */
+
       }
       catch (error) {
         console.error('Error occurred during the process:', error);

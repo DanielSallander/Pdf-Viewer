@@ -1,6 +1,6 @@
 import { Visual } from './visual';
 
-  export function createHeaderContainer(self: Visual) {
+  export function createHeader(self: Visual) {
     self.headerContainer = document.createElement('div');
   
     self.leftArrow = document.createElement('button');
