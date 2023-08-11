@@ -24,6 +24,7 @@
     "pdfjs-dist": "^3.7.107",
     "powerbi-visuals-api": "5.1.0",
     "powerbi-visuals-utils-formattingmodel": "5.0.0",
+    "powerbi-visuals-utils-tooltiputils": "^6.0.1",
     "process": "^0.11.10",
     "webpack": "^5.0.0",
     "worker-loader": "3.0.7"
