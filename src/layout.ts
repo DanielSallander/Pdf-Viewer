@@ -72,13 +72,13 @@ import { Visual } from './visual';
     /* Arrows */
     const handleLeftArrowClick = () => {
       self.pageNumber = Math.max(1, self.pageNumber - 1);
-      evaluateArrowImages(self);
+      evaluateArrowButtons(self);
       self.update(self.options);
     };
   
     const handleRightArrowClick = () => {
       self.pageNumber = Math.min(self.numberOfPages, self.pageNumber + 1);
-      evaluateArrowImages(self);
+      evaluateArrowButtons(self);
       self.update(self.options);
     };
   
@@ -200,7 +200,7 @@ import { Visual } from './visual';
   }
   
 
-  export function evaluateArrowImages(self: Visual) {
+  export function evaluateArrowButtons(self: Visual) {
     self.leftArrowSign.classList.remove('arrow-left-inactive', 'arrow-left');
     self.rightArrowSign.classList.remove('arrow-right-inactive', 'arrow-right');
   
