@@ -33,7 +33,7 @@ import { PDFViewSettings, FormatConfiguration } from './formattingmodel';
 import { getValue } from "./objectEnumerationUtility";
 import { 
   createWarningTextNode,
-  createHeaderContainer,
+  createHeader,
   createPdfContainer,
   toggleScrollOverflow,
   toggleHeaderVisibility,
@@ -46,6 +46,7 @@ import { PDFDocumentLoadingTask, RenderTask } from 'pdfjs-dist/types/src/display
 import { PDFPageProxy } from 'pdfjs-dist';
 import { PageViewport } from 'pdfjs-dist/types/web/interfaces';
 import powerbi from "powerbi-visuals-api";
+import {createTooltipServiceWrapper, ITooltipServiceWrapper} from "powerbi-visuals-utils-tooltiputils";
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
@@ -57,6 +58,7 @@ import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import {
   select as d3Select
 } from "d3-selection";
+import * as crypto from 'crypto';
 
 const defaultSettings: PDFViewSettings = {
   pdfViewerSettings: {
@@ -68,6 +70,7 @@ const defaultSettings: PDFViewSettings = {
 export class Visual implements IVisual {
     
     private selectionElement: Selection<any>;
+    private tooltipServiceWrapper: ITooltipServiceWrapper;
     public self: Visual;
     public viewport: PageViewport ;
     public target: HTMLElement;
@@ -109,11 +112,11 @@ export class Visual implements IVisual {
     public licenseManager: IVisualLicenseManager;
     public notificationType: number;
     public hasServicePlans: boolean;
-    public isLicensed: boolean;
+    public isLicensed: boolean = false;
 
     private events: IVisualEventService;
     private selectionManager: ISelectionManager;
-
+    
     public static readonly SCROLLBAR_WIDTH = 18; // Fixed number for scroll bar width
     public static readonly A4_PROPORTION = 1.414; // Fixed number for A4 proportion
        
@@ -146,8 +149,6 @@ export class Visual implements IVisual {
           console.log(err);
         });
 
-      
-
       this.selectionManager = options.host.createSelectionManager();
     
       pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -162,16 +163,18 @@ export class Visual implements IVisual {
       this.events = options.host.eventService;
     
       createWarningTextNode(this.self);
-      createHeaderContainer(this.self);
+      createHeader(this.self);
       createPdfContainer(this.self);
 
       this.selectionElement = d3Select(this.canvas);
+
+      this.tooltipServiceWrapper = createTooltipServiceWrapper(this.host.tooltipService);
 
       this.handleContextMenu();
     
       options.host.refreshHostData();
     }
-    
+
     public update(options: VisualUpdateOptions) {
       this.events.renderingStarted(options);
     
@@ -201,8 +204,14 @@ export class Visual implements IVisual {
         }
     
         const Base64Conversion = new base64conversion();
-        const pdfDataIndex = Object.keys(columns[0].roles)[0] === "pdfData" ? 0 : 1;
-        const pdfFileNameIndex = pdfDataIndex === 1 ? 0 : 1;
+        
+        const pdfDataIndex = findIndexInColumns(columns, "pdfData");
+        const pdfFileNameIndex = findIndexInColumns(columns, "pdfFileName");
+        const pdfTooltipIndex = findIndexInColumns(columns, "tooltipData");
+    
+        /* generate a GUID if pdf name field is not used*/
+        this.pdfFileName = rows[0][pdfFileNameIndex]?.toString() || generateGUID();
+
         const newBase64String = rows[0][pdfDataIndex]?.toString();
     
         if (!newBase64String || !Base64Conversion.isBase64(newBase64String)) {
@@ -211,12 +220,13 @@ export class Visual implements IVisual {
             "The selected pdf document is not properly formatted to base64"));
           throw new Error();
         }
-    
+
         const pdfDataIsMeasure = dataViews[0].metadata.columns[pdfDataIndex].isMeasure;
         const pdfFileNameIsMeasure = dataViews[0]?.metadata?.columns[pdfFileNameIndex]?.isMeasure ?? false;
- 
+        const pdfTooltipIsMeasure = dataViews[0]?.metadata?.columns[pdfTooltipIndex]?.isMeasure ?? false;
+    
         if (!this.isLicensed) {
-          if (pdfDataIsMeasure || pdfFileNameIsMeasure) {
+          if (pdfDataIsMeasure || pdfFileNameIsMeasure || pdfTooltipIsMeasure) {
             const licenseTooltip = "Using measures is only available in the licensed version"
             this.handleError(licenseTooltip);
             this.licenseManager.notifyFeatureBlocked(licenseTooltip);
@@ -226,9 +236,7 @@ export class Visual implements IVisual {
             throw new Error("PDF rendering aborted");
           }
         }
-    
-        this.pdfFileName = rows[0][pdfFileNameIndex]?.toString() || "Data";
-    
+        
         this.warningText.textContent = '';
         if (this.base64encodedString !== newBase64String) this.pageNumber = 1;
     
@@ -237,6 +245,23 @@ export class Visual implements IVisual {
     
         this.loadingTask = pdfjsLib.getDocument({ data: pdfAsArray });
         this.processLoadingTask();
+        
+        if (pdfTooltipIndex) {
+          this.tooltipServiceWrapper.addTooltip(this.selectionElement,
+            () =>
+            [{
+              displayName: dataViews[0]?.metadata?.columns[pdfTooltipIndex].displayName, 
+              value: rows[0][pdfTooltipIndex].toString()
+            }]
+          );
+        }
+
+        this.selectionElement.on("mouseover.tooltip", () => {
+          if (!pdfTooltipIndex) { 
+            this.tooltipServiceWrapper.hide()
+          }
+        })
+          
       }
       catch (error) {
         console.error('Error occurred during the process:', error);
@@ -362,7 +387,6 @@ export class Visual implements IVisual {
         event.preventDefault();
       });
     }
-    
 
     /**
      * Returns properties pane formatting model content hierarchies, properties and latest formatting values, Then populate properties pane.
@@ -378,4 +402,26 @@ export class Visual implements IVisual {
 
 function keywordExistsInString(keyword: string, str: string): boolean {
   return str.includes(keyword);
+}
+
+function generateGUID(): string {
+  const bytes = crypto.randomBytes(16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // Set version to 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // Set variant to RFC4122
+
+  return bytes.toString('hex').substring(0, 8) +
+         '-' + bytes.toString('hex').substring(8, 12) +
+         '-4' + bytes.toString('hex').substring(13, 16) +
+         '-' + bytes.toString('hex').substring(16, 20) +
+         '-' + bytes.toString('hex').substring(20);
+}
+
+function findIndexInColumns(columns: powerbi.DataViewMetadataColumn[], columnName: string ) {
+  for (let i = 0; i < columns.length; i++) {
+    const column = columns[i];
+    if (column.roles && columnName in column.roles) {
+        return i; // Return the index if the columnName exists in roles
+    }
+  }
+  return undefined; // Return undefined if the columnName is not found in any roles
 }

@@ -15,6 +15,11 @@
             "displayName": "PDF File Name",
             "name": "pdfFileName",
             "kind": "GroupingOrMeasure"          
+        },
+        {
+            "displayName": "Tooltip",
+            "name": "tooltipData",
+            "kind": "GroupingOrMeasure"          
         }
     ],
     "objects": {
@@ -48,6 +53,10 @@
                     "pdfFileName": 
                     {
                         "max": 1
+                    },
+                    "tooltipData": 
+                    {
+                        "max": 1
                     }
                 }
             ],           
@@ -66,6 +75,12 @@
                         "for": 
                         {
                             "in": "pdfFileName"
+                        }
+                    },
+                    {
+                        "for": 
+                        {
+                            "in": "tooltipData"
                         }
                     }]
                 },
