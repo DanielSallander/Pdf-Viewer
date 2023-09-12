@@ -35,6 +35,7 @@ import {
   createWarningTextNode,
   createHeader,
   createPdfContainer,
+  createLandingContainer,
   toggleScrollOverflow,
   toggleHeaderVisibility,
   evaluateArrowButtons,
@@ -96,6 +97,7 @@ export class Visual implements IVisual {
     public zoomIndicatorSpan: HTMLSpanElement;
     public zoom_reset_and_indicator: HTMLDivElement;
     public exportToFileButtoncallout: HTMLDivElement;
+    public warningDiv: HTMLDivElement;
     public warningText: Text;
     public options: VisualUpdateOptions;
     public scrollOverflow: boolean;
@@ -116,6 +118,13 @@ export class Visual implements IVisual {
 
     private events: IVisualEventService;
     private selectionManager: ISelectionManager;
+
+    public landingDivElement: HTMLDivElement;
+    public landingImage: HTMLImageElement;
+    private isLandingPageOn: boolean;
+    private LandingPageRemoved: boolean;
+    private LandingPage: Selection<any>;
+    private LandingPageElement: Element;
     
     public static readonly SCROLLBAR_WIDTH = 18; // Fixed number for scroll bar width
     public static readonly A4_PROPORTION = 1.414; // Fixed number for A4 proportion
@@ -148,7 +157,7 @@ export class Visual implements IVisual {
           this.hasServicePlans = undefined;
           console.log(err);
         });
-
+ 
       this.selectionManager = options.host.createSelectionManager();
     
       pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -159,12 +168,14 @@ export class Visual implements IVisual {
     
       this.scrollOverflow = false;
       this.headerIsPresentable = false;
+      this.isLandingPageOn = false;
     
       this.events = options.host.eventService;
     
       createWarningTextNode(this.self);
       createHeader(this.self);
       createPdfContainer(this.self);
+      createLandingContainer(this.self);
 
       this.selectionElement = d3Select(this.canvas);
 
@@ -176,13 +187,50 @@ export class Visual implements IVisual {
     }
 
     public update(options: VisualUpdateOptions) {
+            
       this.events.renderingStarted(options);
+
+      this.options = options;
+
+      this.warningDiv.hidden = true;
+
+      this.HandleLandingPage(options);
+      
+      if(!this.isLandingPageOn) this.renderPdf(options);
+
+      this.events.renderingFinished(options);
     
+      return;
+    }
+
+    private HandleLandingPage(options: VisualUpdateOptions) {
+      
+      if(!options.dataViews || !options.dataViews[0]?.metadata?.columns?.length){
+          if(!this.isLandingPageOn) {
+              this.isLandingPageOn = true;
+              this.target.appendChild(this.landingDivElement);
+              this.target.removeChild(this.pdfContainer);
+              this.target.removeChild(this.headerContainer);
+          }
+
+      } else {
+          if(this.isLandingPageOn){
+              this.isLandingPageOn = false;
+              this.target.appendChild(this.headerContainer);
+              this.target.appendChild(this.pdfContainer);
+              this.target.removeChild(this.landingDivElement);
+          }
+      }
+
+      this.adjustLandingSize();
+
+    }
+
+    private renderPdf(options: VisualUpdateOptions) {
+
       const { dataViews } = options;
       const { objects } = dataViews[0].metadata;
       const { rows, columns } = dataViews[0].table;
-    
-      this.options = options;
     
       this.visualViewportWidth = options.viewport.width;
       this.visualViewportHeight = options.viewport.height;
@@ -193,87 +241,79 @@ export class Visual implements IVisual {
           scrollOverflow: getValue<boolean>(objects, 'dataCard', 'scrollOverflow', defaultSettings.pdfViewerSettings.scrollOverflow),
         }
       };
-    
+      
+      
       this.pdfViewSettings = pdfViewSettings;
     
-      try {
-        /* Only one document must be selected */
-        if (rows.length !== 1) {
-          this.handleError("The visual must be filtered to one document in order to be displayed");
-          throw new Error();
-        }
-    
-        const Base64Conversion = new base64conversion();
-        
-        const pdfDataIndex = findIndexInColumns(columns, "pdfData");
-        const pdfFileNameIndex = findIndexInColumns(columns, "pdfFileName");
-        const pdfTooltipIndex = findIndexInColumns(columns, "tooltipData");
-    
-        /* generate a GUID if pdf name field is not used*/
-        this.pdfFileName = rows[0][pdfFileNameIndex]?.toString() || generateGUID();
+      const Base64Conversion = new base64conversion();
+      
+      const pdfDataIndex = findIndexInColumns(columns, "pdfData");
+      const pdfFileNameIndex = findIndexInColumns(columns, "pdfFileName");
+      const pdfTooltipIndex = findIndexInColumns(columns, "tooltipData");
 
-        const newBase64String = rows[0][pdfDataIndex]?.toString();
-    
-        if (!newBase64String || !Base64Conversion.isBase64(newBase64String)) {
-          this.handleError(
-            (!newBase64String ? "No pdf document is selected or pdf base 64 data is empty" :
-            "The selected pdf document is not properly formatted to base64"));
-          throw new Error();
-        }
+      /* generate a GUID if pdf name field is not used*/
+      this.pdfFileName = rows[0][pdfFileNameIndex]?.toString() || generateGUID();
 
-        const pdfDataIsMeasure = dataViews[0].metadata.columns[pdfDataIndex].isMeasure;
-        const pdfFileNameIsMeasure = dataViews[0]?.metadata?.columns[pdfFileNameIndex]?.isMeasure ?? false;
-        const pdfTooltipIsMeasure = dataViews[0]?.metadata?.columns[pdfTooltipIndex]?.isMeasure ?? false;
-    
-        if (!this.isLicensed) {
-          if (pdfDataIsMeasure || pdfFileNameIsMeasure || pdfTooltipIsMeasure) {
-            const licenseTooltip = "Using measures is only available in the licensed version"
-            this.handleError(licenseTooltip);
-            this.licenseManager.notifyFeatureBlocked(licenseTooltip);
-            setTimeout(() => {
-              this.licenseManager.clearLicenseNotification();
-            }, 5000);
-            throw new Error("PDF rendering aborted");
-          }
-        }
-        
-        this.warningText.textContent = '';
-        if (this.base64encodedString !== newBase64String) this.pageNumber = 1;
-    
-        this.base64encodedString = newBase64String;
-        const pdfAsArray = Base64Conversion.convertDataURIToBinary(this.base64encodedString);
-    
-        this.loadingTask = pdfjsLib.getDocument({ data: pdfAsArray });
-        this.processLoadingTask();
-        
-        if (pdfTooltipIndex) {
-          this.tooltipServiceWrapper.addTooltip(this.selectionElement,
-            () =>
-            [{
-              displayName: dataViews[0]?.metadata?.columns[pdfTooltipIndex].displayName, 
-              value: rows[0][pdfTooltipIndex].toString()
-            }]
-          );
-        }
+      const newBase64String = rows[0][pdfDataIndex]?.toString();
+  
+      if (!newBase64String || !Base64Conversion.isBase64(newBase64String)) {
+        this.showWarning(
+          (!newBase64String ? "No pdf document is selected or pdf base 64 data is empty" :
+          "The selected pdf document is not properly formatted to base64"));
+        return;
+      }
 
-        this.selectionElement.on("mouseover.tooltip", () => {
-          if (!pdfTooltipIndex) { 
-            this.tooltipServiceWrapper.hide()
-          }
-        })
-          
+      /* Only one document must be selected */
+      if (rows.length !== 1) {
+        this.showWarning("The visual must be filtered to one document in order to be displayed");
+        return;
       }
-      catch (error) {
-        console.error('Error occurred during the process:', error);
+
+      const pdfDataIsMeasure = dataViews[0].metadata.columns[pdfDataIndex].isMeasure;
+      const pdfFileNameIsMeasure = dataViews[0]?.metadata?.columns[pdfFileNameIndex]?.isMeasure ?? false;
+      const pdfTooltipIsMeasure = dataViews[0]?.metadata?.columns[pdfTooltipIndex]?.isMeasure ?? false;
+  
+      if (!this.isLicensed) {
+        if (pdfDataIsMeasure || pdfFileNameIsMeasure || pdfTooltipIsMeasure) {
+          const licenseTooltip = "Using measures is only available in the licensed version"
+          this.showWarning(licenseTooltip);
+          this.licenseManager.notifyFeatureBlocked(licenseTooltip);
+          setTimeout(() => {
+            this.licenseManager.clearLicenseNotification();
+          }, 5000);
+          return;
+        }
       }
-      finally {
-        this.events.renderingFinished(this.options);
+      
+      this.warningText.textContent = '';
+      if (this.base64encodedString !== newBase64String) this.pageNumber = 1;
+  
+      this.base64encodedString = newBase64String;
+      const pdfAsArray = Base64Conversion.convertDataURIToBinary(this.base64encodedString);
+  
+      this.loadingTask = pdfjsLib.getDocument({ data: pdfAsArray });
+      this.processLoadingTask();
+      
+      if (pdfTooltipIndex) {
+        this.tooltipServiceWrapper.addTooltip(this.selectionElement,
+          () =>
+          [{
+            displayName: dataViews[0]?.metadata?.columns[pdfTooltipIndex].displayName, 
+            value: rows[0][pdfTooltipIndex].toString()
+          }]
+        );
       }
-    
-      return;
+
+      this.selectionElement.on("mouseover.tooltip", () => {
+        if (!pdfTooltipIndex) { 
+          this.tooltipServiceWrapper.hide()
+        }
+      })        
     }
+
     
-    private handleError(errorMessage: string) {
+    private showWarning(errorMessage: string) {
+      this.warningDiv.hidden = false;
       this.base64encodedString = "(dummy)";
       this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
@@ -376,6 +416,16 @@ export class Visual implements IVisual {
     
       toggleHeaderVisibility(this.self);
       toggleScrollOverflow(this.self);
+    }
+
+    private adjustLandingSize() {
+
+      const width = this.target.clientWidth;
+      const height = this.target.clientHeight;
+      const heightAndWidth = Math.min(width, height);
+
+      this.landingImage.setAttribute("width", `${heightAndWidth}px`);
+      this.landingImage.setAttribute("height", `${heightAndWidth}px`);
     }
 
     private handleContextMenu() {    

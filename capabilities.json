@@ -93,7 +93,9 @@
                 }
             }
         }
-    ]
+    ],
+    "supportsLandingPage": true,
+    "supportsEmptyDataView": true
 }
 
            
