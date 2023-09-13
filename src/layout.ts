@@ -1,4 +1,5 @@
 import { Visual } from './visual';
+const landingImage = require("../assets/landing.jpeg");
 
   export function createHeader(self: Visual) {
     self.headerContainer = document.createElement('div');
@@ -154,6 +155,20 @@ import { Visual } from './visual';
     self.headerContainer.hidden = true;
   }
 
+  export function createLandingContainer(self: Visual) {
+    self.landingDivElement = document.createElement('div');
+    self.landingDivElement.id = 'landing-container';
+
+    self.landingImage = document.createElement("img");
+    self.landingImage.setAttribute("src", landingImage);
+    self.landingImage.setAttribute("alt", "Landing Page Image");
+
+    self.landingDivElement.appendChild(self.landingImage);
+    self.target.appendChild(self.landingDivElement);
+  
+    return;
+  }
+
 
   export function createPdfContainer(self: Visual) {
     self.pdfContainer = document.createElement('div');
@@ -192,9 +207,11 @@ import { Visual } from './visual';
   
 
   export function createWarningTextNode(self: Visual) {
+    self.warningDiv = document.createElement('div');
     self.warningText = document.createTextNode('');
-  
-    self.target.appendChild(self.warningText);
+    
+    self.warningDiv.appendChild(self.warningText);
+    self.target.appendChild(self.warningDiv);
   
     return;
   }
