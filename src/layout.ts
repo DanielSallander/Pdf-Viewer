@@ -64,7 +64,7 @@ const landingImage = require("../assets/landing.jpeg");
   
     /* Hide header initially */
     hideHeaderContainer(self);
-    //self.target.appendChild(self.headerContainer);
+    self.target.appendChild(self.headerContainer);
   }
   
   function createEventListeners(self: Visual) {
@@ -164,6 +164,7 @@ const landingImage = require("../assets/landing.jpeg");
     self.landingImage.setAttribute("alt", "Landing Page Image");
 
     self.landingDivElement.appendChild(self.landingImage);
+    self.target.appendChild(self.landingDivElement);
   
     return;
   }
@@ -177,7 +178,7 @@ const landingImage = require("../assets/landing.jpeg");
     self.canvas.id = 'pdf-canvas';
     self.context = self.canvas.getContext('2d');
   
-    //self.target.appendChild(self.pdfContainer);
+    self.target.appendChild(self.pdfContainer);
   
     return;
   }

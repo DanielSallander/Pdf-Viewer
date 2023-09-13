@@ -208,17 +208,17 @@ export class Visual implements IVisual {
       if(!options.dataViews || !options.dataViews[0]?.metadata?.columns?.length){
           if(!this.isLandingPageOn) {
               this.isLandingPageOn = true;
-              this.target.appendChild(this.landingDivElement);
-              this.target.removeChild(this.pdfContainer);
-              this.target.removeChild(this.headerContainer);
+              this.landingDivElement.style.display = ''
+              this.pdfContainer.style.display = 'none'
+              this.headerContainer.style.display = 'none'
           }
 
       } else {
           if(this.isLandingPageOn){
               this.isLandingPageOn = false;
-              this.target.appendChild(this.headerContainer);
-              this.target.appendChild(this.pdfContainer);
-              this.target.removeChild(this.landingDivElement);
+              this.landingDivElement.style.display = 'none'
+              this.pdfContainer.style.display = ''
+              this.headerContainer.style.display = ''
           }
       }
 
