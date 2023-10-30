@@ -45,7 +45,6 @@ import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 import { PDFDocumentLoadingTask, RenderTask } from 'pdfjs-dist/types/src/display/api';
 import { PDFPageProxy } from 'pdfjs-dist';
-import { PageViewport } from 'pdfjs-dist/types/web/interfaces';
 import powerbi from "powerbi-visuals-api";
 import {createTooltipServiceWrapper, ITooltipServiceWrapper} from "powerbi-visuals-utils-tooltiputils";
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
@@ -64,7 +63,8 @@ import * as crypto from 'crypto';
 const defaultSettings: PDFViewSettings = {
   pdfViewerSettings: {
     showHeader: true,
-    scrollOverflow: true
+    scrollOverflow: true,
+    showExportButton: true
   }
 };
 
@@ -73,7 +73,6 @@ export class Visual implements IVisual {
     private selectionElement: Selection<any>;
     private tooltipServiceWrapper: ITooltipServiceWrapper;
     public self: Visual;
-    public viewport: PageViewport ;
     public target: HTMLElement;
     public host: IVisualHost
     public pdfContainer: HTMLDivElement;
@@ -105,8 +104,8 @@ export class Visual implements IVisual {
     public zoomLevel: number = 1.0;
     public pdfViewSettings: PDFViewSettings;
     public pdfFileName: string;
-    public pdfViewportWidth: number;
-    public pdfViewportHeight: number;
+    public pageViewportWidth: number;
+    public pageViewportHeight: number;
     public visualViewportWidth: number;
     public visualViewportHeight: number;
     public calculatedHeaderHeight: number;
@@ -122,12 +121,8 @@ export class Visual implements IVisual {
     public landingDivElement: HTMLDivElement;
     public landingImage: HTMLImageElement;
     private isLandingPageOn: boolean;
-    private LandingPageRemoved: boolean;
-    private LandingPage: Selection<any>;
-    private LandingPageElement: Element;
     
     public static readonly SCROLLBAR_WIDTH = 18; // Fixed number for scroll bar width
-    public static readonly A4_PROPORTION = 1.414; // Fixed number for A4 proportion
        
     constructor(options: VisualConstructorOptions) {
       this.licenseManager = options.host.licenseManager;
@@ -239,6 +234,7 @@ export class Visual implements IVisual {
         pdfViewerSettings: {
           showHeader: getValue<boolean>(objects, 'dataCard', 'showHeader', defaultSettings.pdfViewerSettings.showHeader),
           scrollOverflow: getValue<boolean>(objects, 'dataCard', 'scrollOverflow', defaultSettings.pdfViewerSettings.scrollOverflow),
+          showExportButton: getValue<boolean>(objects, 'dataCard', 'showExportButton', defaultSettings.pdfViewerSettings.showExportButton),
         }
       };
       
@@ -345,24 +341,27 @@ export class Visual implements IVisual {
     
 
     private processPage(page: PDFPageProxy) {
+ 
       const scale: number = 3;
-      this.viewport = page.getViewport({ scale: scale });
-      this.pdfViewportHeight = this.viewport.height;
-      this.pdfViewportWidth = this.viewport.width;
+      const viewport = page.getViewport({ scale: scale });
+      const pageViewportHeight = viewport.height; 
+      const pageViewportWidth = viewport.width; 
+      const heightWidthRatio = pageViewportHeight / pageViewportWidth;
     
       const visualViewportWidthSubtract = this.pdfViewSettings.pdfViewerSettings.showHeader ? this.calculatedHeaderHeight : 0;
     
-      this.pdfContainer.style.width = `${this.visualViewportWidth}px`;
       this.pdfContainer.style.height = `${this.visualViewportHeight - visualViewportWidthSubtract}px`;
-    
-      this.canvas.height = this.pdfViewportHeight;
-      this.canvas.width = this.pdfViewportWidth;
+      this.pdfContainer.style.width =  `${this.visualViewportWidth}px`;
+  
+      this.canvas.height = pageViewportHeight;
+      this.canvas.width = pageViewportWidth;
+
+      this.canvas.style.height = `${this.visualViewportWidth * heightWidthRatio * this.zoomLevel}px`;
       this.canvas.style.width = `${this.visualViewportWidth * this.zoomLevel - Visual.SCROLLBAR_WIDTH}px`; // - scrollbarWidth
-      this.canvas.style.height = `${this.visualViewportWidth * Visual.A4_PROPORTION * this.zoomLevel}px`;
-    
+
       const renderContext = {
         canvasContext: this.context,
-        viewport: this.viewport
+        viewport: viewport
       };
     
       /* cancel render in case new pdf is loaded before previous render is finished */

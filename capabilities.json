@@ -26,15 +26,20 @@
             "dataCard": {
                 "properties": {
                     "showHeader": {
-                            "type": {
-                                "bool": true
+                        "type": {
+                            "bool": true
                             }
                     },
                     "scrollOverflow": {
                         "type": {
                             "bool": true
+                            }       
+                    },
+                    "showExportButton": {
+                        "type": {
+                            "bool": true
                         }
-                }
+                    }
             }
         
         }

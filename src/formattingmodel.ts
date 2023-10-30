@@ -1,10 +1,11 @@
 /**
  * Interface for PDF View settings.
  *
- * @interface
- * @property {{
+*  @interface
+*  @property {{
 *   showHeader: boolean,
-*   scrollOverflow: boolean
+*   scrollOverflow: boolean,
+*   showExportButton: boolean,
 * }} pdfViewerSettings
 */
 
@@ -12,6 +13,7 @@ export interface PDFViewSettings {
     pdfViewerSettings: {
       showHeader: boolean;
       scrollOverflow: boolean;
+      showExportButton: boolean;
     };
   }
 
@@ -33,6 +35,10 @@ export class FormatConfiguration {
         {
           objectName: "dataCard",
           propertyName: "scrollOverflow",
+        },
+        {
+          objectName: "dataCard",
+          propertyName: "showExportButton",
         },
       ],
     };
@@ -69,6 +75,20 @@ export class FormatConfiguration {
             },
           },
         },
+        {
+          uid: "scrollOverflowCard_topLevelToggle_showExportButton_uid",
+          displayName: "Show Export Button",
+          control: {
+            type: powerbi.visuals.FormattingComponent.ToggleSwitch,
+            properties: {
+              descriptor: {
+                objectName: "dataCard",
+                propertyName: "showExportButton",
+              },
+              value: pdfViewSettings.pdfViewerSettings.showExportButton,
+            },
+          },
+        }
       ],
     };
 
