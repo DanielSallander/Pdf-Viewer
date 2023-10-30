@@ -203,6 +203,13 @@ const landingImage = require("../assets/landing.jpeg");
     } else {
       self.headerContainer.hidden = true;
     }
+
+    if(self.pdfViewSettings.pdfViewerSettings.showExportButton) {
+      self.exportToFileButton.hidden = false;
+    } else {
+      self.exportToFileButton.hidden = true;
+    }
+
   }
   
 
