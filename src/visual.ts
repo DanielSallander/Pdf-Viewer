@@ -182,7 +182,7 @@ export class Visual implements IVisual {
     }
 
     public update(options: VisualUpdateOptions) {
-            
+           
       this.events.renderingStarted(options);
 
       this.options = options;
@@ -222,7 +222,7 @@ export class Visual implements IVisual {
     }
 
     private renderPdf(options: VisualUpdateOptions) {
-
+      
       const { dataViews } = options;
       const { objects } = dataViews[0].metadata;
       const { rows, columns } = dataViews[0].table;
@@ -247,21 +247,21 @@ export class Visual implements IVisual {
       const pdfFileNameIndex = findIndexInColumns(columns, "pdfFileName");
       const pdfTooltipIndex = findIndexInColumns(columns, "tooltipData");
 
+      /* Only one document must be selected */
+      if (!rows || rows.length !== 1) {
+        this.showWarning("The visual must be filtered to one document in order to be displayed");
+        return;
+      }
+      
       /* generate a GUID if pdf name field is not used*/
-      this.pdfFileName = rows[0][pdfFileNameIndex]?.toString() || generateGUID();
-
+      this.pdfFileName = rows[0][pdfFileNameIndex]?.toString() || generateGUID();  
+      
       const newBase64String = rows[0][pdfDataIndex]?.toString();
   
       if (!newBase64String || !Base64Conversion.isBase64(newBase64String)) {
         this.showWarning(
           (!newBase64String ? "No pdf document is selected or pdf base 64 data is empty" :
           "The selected pdf document is not properly formatted to base64"));
-        return;
-      }
-
-      /* Only one document must be selected */
-      if (rows.length !== 1) {
-        this.showWarning("The visual must be filtered to one document in order to be displayed");
         return;
       }
 
@@ -284,7 +284,7 @@ export class Visual implements IVisual {
       this.warningText.textContent = '';
       if (this.base64encodedString !== newBase64String) this.pageNumber = 1;
   
-      this.base64encodedString = newBase64String;
+      this.base64encodedString = newBase64String;  
       const pdfAsArray = Base64Conversion.convertDataURIToBinary(this.base64encodedString);
   
       this.loadingTask = pdfjsLib.getDocument({ data: pdfAsArray });
